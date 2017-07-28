@@ -12,7 +12,7 @@
 #include "Utilities.h"
 
 static char buf[100];
-
+uint8_t remaining_players_on_board;
 // Seed the random generator
 void seed_srand()
 {
@@ -26,7 +26,9 @@ int roll_die()
 
 KimbleBase::KimbleBase(uint8_t num_players)
 {
-    number_of_players = num_players;
+    
+	number_of_players = num_players;
+	remaining_players_on_board=num_players;
     turn_seq = new Turn_sequence_t[num_players];
     board = new Ground_t;
     seed_srand();
@@ -446,7 +448,9 @@ int8_t KimbleBase::move_peg_to_position(Player_t *player, uint8_t peg_id, uint8_
                 if ( player->meta_data.pegs_in_play >= 0) {
                     player->meta_data.pegs_in_play -= 1;
                 }
-
+				if(player->meta_data.pegs_popped_out == MAX_NUMBER_OF_PEGS) {
+                     remaining_players_on_board-=1;
+                 }
                 pop_up_flag = true;
             } else {
                 sprintf(buf, "Player#%s, Peg#%d Cannot pop. OPERATION_NOT_ALLOWED", player->config.player_name, peg_id);
@@ -625,7 +629,9 @@ int8_t KimbleBase::game_engine()
 
             retcode = players.access_player_data(turn_seq[i].player_id, player);
 
-            if (retcode == SUCCESS && (player->meta_data.player_status ==AWAITNG_TURN)) {
+        if (retcode == SUCCESS && (player->meta_data.player_status == AWAITNG_TURN)) {
+			if (retcode == SUCCESS && (player->meta_data.player_status == AWAITNG_TURN)
+                                   && (remaining_players_on_board > 1)) {
 
                 rolling = true;
 
@@ -686,11 +692,14 @@ int8_t KimbleBase::game_engine()
                     }
                 }
             }
+		}
+		
 
             // set player status at the end of each turn
             set_player_status(player);
             if (player->meta_data.player_status == LOST) {
                 status = LOST;
+				break;
             }
         } //end of "for (uint8_t i = 0; i < number_of_players; i++)"
     } // end of while(status != LOST)
